@@ -1,0 +1,1822 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keystone Vision • WoW Mythic+ History</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500&amp;display=swap');
+        
+        :root {
+            --tw-color-primary: #22c55e;
+        }
+        
+        body {
+            background: linear-gradient(90deg, #0a0a0a, #111827);
+        }
+        
+        .header-glow {
+            text-shadow: 0 0 20px rgb(134 239 172);
+        }
+        
+        .tab-active {
+            border-bottom: 3px solid #22c55e;
+            color: #22c55e;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 520px;
+        }
+        
+        .data-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .data-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-white font-sans">
+    <div class="max-w-screen-2xl mx-auto">
+        <!-- HEADER -->
+        <div class="border-b border-white/10 bg-black/60 backdrop-blur-md sticky top-0 z-50">
+            <div class="px-8 py-5 flex items-center justify-between">
+                <div class="flex items-center gap-x-4">
+                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-400 rounded-2xl flex items-center justify-center text-3xl shadow-inner">🗡️</div>
+                    <div>
+                        <h1 class="text-3xl font-semibold tracking-tighter header-glow" style="font-family: 'Space Grotesk', sans-serif;">
+                            KEYSTONE VISION
+                        </h1>
+                        <p class="text-emerald-300 text-sm -mt-1">Mythic+ • Historical Data with Events</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-x-6">
+                    <div onclick="loadSampleData()" 
+                         class="flex items-center gap-x-2 px-6 py-2.5 bg-white/10 hover:bg-emerald-500/20 rounded-3xl text-sm font-medium cursor-pointer transition-colors">
+                        <span class="text-2xl">📋</span>
+                        <span>Load sample data</span>
+                    </div>
+                    
+                    <div class="h-9 w-px bg-white/20"></div>
+                    
+                    <a href="https://www.curseforge.com/members/poulpitooo0/projects" target="_blank"
+                       class="text-sm flex items-center gap-x-1.5 text-emerald-400 hover:text-white transition-colors">
+                        <span>My Addons</span>
+                        <span class="text-lg">→</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-8 py-8">
+            <!-- PASTE SECTION -->
+            <div class="bg-zinc-900/70 border border-white/10 rounded-3xl p-8 mb-10">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold flex items-center gap-x-3">
+                        📥 Paste your historical data
+                        <span class="text-xs font-mono bg-emerald-400/10 text-emerald-400 px-3 py-1 rounded-2xl">WoW Keystone format with events</span>
+                    </h2>
+                    <button onclick="clearAllData()" 
+                            class="text-red-400 hover:text-red-300 text-sm flex items-center gap-x-2 transition-colors">
+                        <span class="text-lg">🗑️</span>
+                        Clear all
+                    </button>
+                </div>
+                
+                <textarea id="pasteArea" 
+                          class="w-full h-56 bg-black/60 border border-white/10 focus:border-emerald-400 rounded-3xl px-6 py-5 text-sm font-mono text-emerald-200 resize-none outline-none"
+                          placeholder="Paste here the raw text with progression and events:
+• Progress lines: 10s: 5.2%
+• Affixes: [AFFIXES] Weekly: 3 affixes
+• Boss: [STARTING] Boss Name at 120s
+• Deaths: [DEATH] Player at 180s (15.2%)
+• Custom: [CUSTOM] Event at 300s"></textarea>
+                
+                <div class="flex gap-x-4 mt-6">
+                    <button onclick="parseAndAddData()" 
+                            class="flex-1 bg-emerald-500 hover:bg-emerald-600 transition-all text-black font-semibold py-4 rounded-3xl text-lg flex items-center justify-center gap-x-3">
+                        <span>📊 ANALYZE &amp; ADD DATA</span>
+                        <span class="text-2xl">→</span>
+                    </button>
+                    
+                    <button onclick="document.getElementById('pasteArea').value = ''" 
+                            class="px-8 border border-white/20 hover:border-white/40 rounded-3xl font-medium">
+                        Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- SUMMARY TABS -->
+            <div id="noDataMessage" class="text-center py-16 text-zinc-400">
+                <div class="mx-auto w-24 h-24 bg-white/5 rounded-3xl flex items-center justify-center text-6xl mb-6">📭</div>
+                <p class="text-xl">No data loaded yet…</p>
+                <p class="text-sm mt-2">Paste your keystone logs and visualize completion curves!</p>
+            </div>
+
+            <div id="tabsContainer" class="hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-medium flex items-center gap-x-2">
+                        📋 Available data
+                        <span id="datasetCount" class="text-xs bg-emerald-400 text-black px-3 py-px rounded-3xl font-mono"></span>
+                    </h2>
+
+                    <div class="flex items-center gap-x-2">
+                        <span class="text-sm text-zinc-400">Filter by dungeon:</span>
+                        <select id="dungeonFilter" onchange="filterByDungeon(this.value)" class="bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-1 text-sm text-white focus:border-emerald-400 focus:outline-none">
+                            <option value="all">All dungeons</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="tabs" class="flex gap-x-2 overflow-x-auto pb-4 scrollbar-hide">
+                    <!-- Tabs generated by JS -->
+                </div>
+            </div>
+
+            <!-- CHART SECTION -->
+            <div id="chartSection" class="hidden bg-zinc-900/70 border border-white/10 rounded-3xl p-8">
+                <div class="flex justify-between items-baseline mb-6">
+                    <div>
+                        <h3 id="selectedTitle" class="text-2xl font-semibold"></h3>
+                        <p id="selectedSubtitle" class="text-emerald-300 text-sm"></p>
+                    </div>
+                    
+                    <div class="flex items-center gap-x-8 text-sm">
+                        <div class="flex items-center gap-x-2">
+                            <div class="w-3 h-px bg-emerald-400"></div>
+                            <span id="totalRuns" class="font-mono"></span>
+                        </div>
+                        <label class="flex items-center gap-x-2 cursor-pointer text-emerald-400 hover:text-white">
+                            <input type="checkbox" id="compareMode" onchange="toggleCompareMode()" class="rounded border-zinc-600 text-emerald-500 focus:ring-emerald-500">
+                            <span>Compare runs</span>
+                        </label>
+                        <div onclick="exportCurrentData()" class="cursor-pointer flex items-center gap-x-2 text-emerald-400 hover:text-white">
+                            <span>⬇️</span>
+                            <span>Export CSV</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="keystoneChart"></canvas>
+                </div>
+                
+                <div class="flex justify-between text-xs text-zinc-400 mt-4 px-2">
+                    <div>Completion time</div>
+                    <div>Percentage of units killed</div>
+                </div>
+
+                <!-- Legend -->
+                <div class="flex flex-wrap gap-x-6 gap-y-2 mt-4 px-2 text-xs text-zinc-400">
+                    <div class="flex items-center gap-x-2">
+                        <div class="w-3 h-3 bg-emerald-400 rounded-full"></div>
+                        <span>Progression</span>
+                    </div>
+                    <div class="flex items-center gap-x-2">
+                        <div class="w-3 h-3 bg-red-500 transform rotate-90" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></div>
+                        <span>Boss Events</span>
+                    </div>
+                    <div class="flex items-center gap-x-2">
+                        <div class="w-3 h-3 bg-amber-500" style="clip-path: polygon(50% 0%, 0% 50%, 50% 100%, 100% 50%); transform: rotate(45deg);"></div>
+                        <span>Deaths</span>
+                    </div>
+                    <div class="flex items-center gap-x-2">
+                        <div class="w-3 h-3 bg-purple-500" style="clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);"></div>
+                        <span>Custom Events</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind script initialization
+        function initTailwind() {
+            return {
+                config(userConfig = {}) {
+                    return {
+                        configUser: userConfig,
+                        defaultTheme: {
+                            extend: {
+                                fontFamily: {
+                                    sans: ['Inter', 'system_ui', 'sans-serif'],
+                                }
+                            }
+                        }
+                    }
+                },
+                theme(userConfig = {}) {
+                    return {
+                        ...this.defaultTheme,
+                        ...userConfig,
+                    }
+                }
+            }
+        }
+        
+        // Global variables
+        let datasets = []
+        let filteredDatasets = []
+        let currentEntry = null
+        let chartInstance = null
+        let compareMode = false
+
+        // Affix ID to name mapping
+        const affixNames = {
+            9: "Tyrannical",
+            10: "Fortified",
+            147: "Xal'atath's Guile",
+            162: "Xal'atath's Bargain: Pulsar",
+            165: "Lindormi's Guidance",
+            158: "Xal'atath's Bargain: Voidbound",
+        }
+
+        // Affix ID to icon mapping
+        const affixIcons = {
+            9: "achievement_boss_archaedas",
+            10: "ability_toughness",
+            147: "ability_racial_chillofnight",
+            162: "inv_cosmicvoid_nova",
+            165: "ability_evoker_bronze_01",
+            158: "inv_cosmicvoid_buff",
+        }
+
+        // Colors for comparison mode
+        const comparisonColors = [
+            '#22c55e', // emerald
+            '#3b82f6', // blue
+            '#f59e0b', // amber
+            '#ef4444', // red
+            '#8b5cf6', // violet
+            '#06b6d4', // cyan
+            '#84cc16', // lime
+            '#f97316', // orange
+            '#ec4899', // pink
+            '#6b7280', // gray
+        ]
+
+        // Get affix icon URL
+        function getAffixIconUrl(affix) {
+            let iconName;
+            if (typeof affix === 'number') {
+                // Direct ID
+                iconName = affixIcons[affix] || "inv_misc_questionmark"
+                console.log(`Affix ID: ${affix} -> Icon: "${iconName}"`)
+            } else if (typeof affix === 'object' && affix.id) {
+                // Object with ID
+                iconName = affixIcons[affix.id] || "inv_misc_questionmark"
+                console.log(`Affix ID: ${affix.id} -> Icon: "${iconName}"`)
+            } else if (typeof affix === 'object' && affix.name) {
+                // Fallback for name-based (backward compatibility)
+                iconName = affixIcons[affix.name] || "inv_misc_questionmark"
+                console.log(`Affix name (fallback): "${affix.name}" -> Icon: "${iconName}"`)
+            } else {
+                // String name (backward compatibility)
+                iconName = affixIcons[affix] || "inv_misc_questionmark"
+                console.log(`Affix name (fallback): "${affix}" -> Icon: "${iconName}"`)
+            }
+            return `https://wow.zamimg.com/images/wow/icons/large/${iconName}.jpg`
+        }
+        
+        // Format seconds → MM:SS
+        function formatTime(seconds) {
+            const min = Math.floor(seconds / 60)
+            const sec = seconds % 60
+            return `${min}:${sec < 10 ? '0' : ''}${sec}`
+        }
+        
+        // Parse the raw paste text
+        function parseKeystoneData(text) {
+            const entries = []
+            const blocks = text.split(/MapID:\s*/i).filter(b => b.trim() !== '')
+
+            for (let block of blocks) {
+                const lines = block.split('\n')
+
+                // Extract MapID and name
+                const headerMatch = lines[0].match(/^(\d+)\s*\((.+?)\)/)
+                if (!headerMatch) continue
+
+                const mapID = parseInt(headerMatch[1])
+                const name = headerMatch[2].trim()
+
+                // Find all levels in this block
+                const levelIndices = []
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].includes('Level')) {
+                        const lvlMatch = lines[i].match(/Level\s*(\d+):/)
+                        if (lvlMatch) {
+                            levelIndices.push({
+                                level: parseInt(lvlMatch[1]),
+                                startIndex: i + 1
+                            })
+                        }
+                    }
+                }
+
+                // Process each level separately
+                for (let levelIndex = 0; levelIndex < levelIndices.length; levelIndex++) {
+                    const currentLevel = levelIndices[levelIndex]
+                    const nextLevelIndex = levelIndex < levelIndices.length - 1 ? levelIndices[levelIndex + 1].startIndex - 1 : lines.length
+
+                    // Parse different event types for this level
+                    const dataPoints = []
+                    const events = []
+                    let affixes = null
+
+                    for (let i = currentLevel.startIndex; i < nextLevelIndex; i++) {
+                        const line = lines[i].trim()
+                        if (!line) continue
+
+                        // PROGRESS points
+                        const progressMatch = line.match(/^(\d+(?:\.\d+)?)s:\s*([\d.]+)%/)
+                        if (progressMatch) {
+                            dataPoints.push({
+                                time: parseInt(progressMatch[1]),
+                                percent: parseFloat(progressMatch[2])
+                            })
+                            continue
+                        }
+
+                        // AFFIXES - Nouveau format avec IDs
+                        const affixIDsMatch = line.match(/^\[AFFIXES\]\s*Keystone:\s*(.+)$/)
+                        if (affixIDsMatch) {
+                            const keystoneIDs = affixIDsMatch[1].split(', ').map(id => ({ id: parseInt(id.trim()) }))
+                            affixes = affixes || {}
+                            affixes.keystone = keystoneIDs
+                            continue
+                        }
+
+                        const weeklyIDsMatch = line.match(/^\s*Weekly:\s*(.+)$/)
+                        if (weeklyIDsMatch && affixes) {
+                            const weeklyIDs = weeklyIDsMatch[1].split(', ').map(id => ({ id: parseInt(id.trim()) }))
+                            affixes.weekly = weeklyIDs
+                            continue
+                        }
+
+                        // AFFIXES - Ancien format numérique
+                        const affixMatch = line.match(/^\[AFFIXES\]\s*Keystone:\s*(\d+)\s*affixes,\s*Weekly:\s*(\d+)\s*affixes/)
+                        if (affixMatch) {
+                            affixes = {
+                                keystone: parseInt(affixMatch[1]),
+                                weekly: parseInt(affixMatch[2])
+                            }
+                            continue
+                        }
+
+                        // AFFIXES - Format très ancien
+                        const legacyAffixMatch = line.match(/^\[AFFIXES\]\s*(.+)/)
+                        if (legacyAffixMatch && !affixes) {
+                            affixes = legacyAffixMatch[1]
+                            continue
+                        }
+
+                        // BOSS events
+                        const bossMatch = line.match(/^\[(STARTING|ENDING|FAILED|DEFEATED|WIPED)\]\s*Boss\s*(.+?)\s*at\s*([\d.]+)s/)
+                        if (bossMatch) {
+                            events.push({
+                                type: 'boss',
+                                event: bossMatch[1],
+                                name: bossMatch[2],
+                                time: parseFloat(bossMatch[3])
+                            })
+                            continue
+                        }
+
+                        // DEATH events
+                        const deathMatch = line.match(/^\[DEATH\]\s*(.+?)\s*at\s*([\d.]+)s\s*\(([\d.]+)%\)/)
+                        if (deathMatch) {
+                            events.push({
+                                type: 'death',
+                                player: deathMatch[1],
+                                time: parseFloat(deathMatch[2]),
+                                percent: parseFloat(deathMatch[3])
+                            })
+                            continue
+                        }
+
+                        // CUSTOM events
+                        const customMatch = line.match(/^\[CUSTOM\]\s*(.+?)\s*(?:à|at)\s*([\d.]+)s\s*\(([\d]+)\)/)
+                        if (customMatch) {
+                            events.push({
+                                type: 'custom',
+                                name: customMatch[1],
+                                time: parseFloat(customMatch[2]),
+                                timestamp: parseInt(customMatch[3])
+                            })
+                            continue
+                        }
+
+                        // Legacy format support
+                        const legacyMatch = line.match(/^(\d+)s:\s*([\d.]+)%/)
+                        if (legacyMatch) {
+                            dataPoints.push({
+                                time: parseInt(legacyMatch[1]),
+                                percent: parseFloat(legacyMatch[2])
+                            })
+                        }
+                    }
+
+                    if (dataPoints.length > 0) {
+                        // Sort data points
+                        dataPoints.sort((a, b) => a.time - b.time)
+
+                        // Sort events
+                        events.sort((a, b) => a.time - b.time)
+
+                        entries.push({
+                            id: Date.now() + Math.random(),
+                            mapID: mapID,
+                            dungeonName: name,
+                            level: currentLevel.level,
+                            data: dataPoints,
+                            events: events,
+                            affixes: affixes,
+                            totalRuns: dataPoints[dataPoints.length - 1].percent
+                        })
+                    }
+                }
+            }
+            return entries
+        }
+        
+        // Render the top tabs
+        function renderTabs() {
+            const container = document.getElementById('tabs')
+            container.innerHTML = ''
+
+            document.getElementById('datasetCount').textContent = `${filteredDatasets.length} dungeon${filteredDatasets.length > 1 ? 's' : ''}`
+
+            filteredDatasets.forEach((entry, index) => {
+                const tab = document.createElement('div')
+                tab.className = `data-card group flex-shrink-0 px-6 py-4 rounded-3xl border cursor-pointer flex items-center gap-x-4 min-w-[260px] ${entry.id === (currentEntry ? currentEntry.id : null) ? 'border-emerald-400 bg-emerald-500/10' : 'border-white/10 hover:border-white/30 bg-zinc-900/70'}`
+                
+                tab.innerHTML = `
+                    <div class="flex-1">
+                        <div class="flex items-center gap-x-3">
+                            <span class="font-mono text-emerald-400 text-xl">#${entry.mapID}</span>
+                            <span class="font-semibold">${entry.dungeonName} +${entry.level}</span>
+                        </div>
+                        <div class="text-sm text-zinc-400 mt-px">${entry.affixes ? (typeof entry.affixes === 'object' && entry.affixes.keystone ? `${entry.affixes.keystone.length} affixes` : `${entry.affixes} affixes`) : ''}</div>
+                        ${entry.affixes && typeof entry.affixes === 'object' && entry.affixes.keystone && entry.affixes.keystone[0] ? `<div class="flex gap-1 mt-1">${entry.affixes.keystone.slice(0, 3).map(a => `<img src="${getAffixIconUrl(a)}" alt="${affixNames[a.id] || a.name || a.id}" title="${affixNames[a.id] || a.name || a.id}" class="w-4 h-4 rounded">`).join('')}${entry.affixes.keystone.length > 3 ? `<span class="text-xs text-zinc-500 ml-1">+${entry.affixes.keystone.length - 3}</span>` : ''}</div>` : ''}
+                        ${entry.events.length > 0 ? `<div class="text-xs text-zinc-500 mt-1">${entry.events.length} événement${entry.events.length > 1 ? 's' : ''} enregistré${entry.events.length > 1 ? 's' : ''}</div>` : ''}
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs uppercase tracking-widest text-emerald-300">${entry.data[entry.data.length - 1].percent === 100 ? '100% à' : entry.data[entry.data.length - 1].percent + '% à'}</div>
+                        <div class="font-mono text-2xl font-semibold">${formatTime(entry.data[entry.data.length - 1].time)}</div>
+                    </div>
+                `
+                
+                tab.onclick = () => {
+                    currentEntry = entry
+                    renderTabs()
+                    renderChart()
+                }
+                
+                container.appendChild(tab)
+            })
+        }
+        
+        // Render the Chart.js chart
+        function renderChart() {
+            if (!currentEntry && !compareMode) return
+            if (compareMode && filteredDatasets.length === 0) return
+
+            const entriesToShow = compareMode ? filteredDatasets : [currentEntry]
+            const entry = compareMode ? filteredDatasets[0] : currentEntry
+            const ctx = document.getElementById('keystoneChart')
+            
+            // Hide no-data message
+            document.getElementById('noDataMessage').classList.add('hidden')
+            document.getElementById('tabsContainer').classList.remove('hidden')
+            document.getElementById('chartSection').classList.remove('hidden')
+            
+            // Update header
+            if (compareMode) {
+                const dungeonName = entriesToShow[0].dungeonName
+                const mapID = entriesToShow[0].mapID
+                document.getElementById('selectedTitle').innerHTML = `
+                    Comparaison des runs - ${dungeonName}
+                `
+                document.getElementById('selectedSubtitle').innerHTML = `
+                    ${entriesToShow.length} run${entriesToShow.length > 1 ? 's' : ''} • MapID <span class="font-mono">${mapID}</span>
+                `
+                document.getElementById('totalRuns').innerHTML = `${entriesToShow.length} curve${entriesToShow.length > 1 ? 's' : ''} comparée${entriesToShow.length > 1 ? 's' : ''}`
+            } else {
+                document.getElementById('selectedTitle').innerHTML = `
+                    ${entry.dungeonName} <span class="font-mono text-emerald-400 ml-3">+${entry.level}</span>
+                `
+                document.getElementById('selectedSubtitle').innerHTML = `
+                    MapID <span class="font-mono">${entry.mapID}</span> •
+                    Dernier run terminé en <span class="font-mono">${formatTime(entry.data[entry.data.length - 1].time)}</span>
+                    ${entry.affixes ? (typeof entry.affixes === 'object' && entry.affixes.keystone ? ` • ${entry.affixes.keystone.map(a => `<img src="${getAffixIconUrl(a)}" alt="${affixNames[a.id] || a.name || a.id}" title="${affixNames[a.id] || a.name || a.id}" class="inline w-4 h-4 rounded">`).join('')}` : ` • <span class="text-amber-400">${entry.affixes} affixes</span>`) : ''}
+                `
+                document.getElementById('totalRuns').innerHTML = `% Trash • ${entry.data.length} points de données`
+            }
+            
+            // Destroy old chart
+            if (chartInstance) {
+                chartInstance.destroy()
+            }
+            
+            // Calculate Y-axis max based on all entries
+            let yAxisMax = 10
+            entriesToShow.forEach(e => {
+                const lastPercent = e.data[e.data.length - 1].percent
+                yAxisMax = Math.max(yAxisMax, Math.round(lastPercent * 1.1))
+            })
+
+            const chartDatasets = []
+
+            if (compareMode) {
+                // Comparison mode: show all runs as curves
+                entriesToShow.forEach((runEntry, index) => {
+                    const color = comparisonColors[index % comparisonColors.length]
+                    const progressData = runEntry.data.map(point => ({ x: point.time, y: point.percent }))
+
+                    chartDatasets.push({
+                        label: `Niveau +${runEntry.level}`,
+                        data: progressData,
+                        borderColor: color,
+                        backgroundColor: color.replace(')', ', 0.15)').replace('rgb', 'rgba'),
+                        borderWidth: 2,
+                        tension: 0.2,
+                        pointRadius: 1,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#fff',
+                        fill: false
+                    })
+                })
+            } else {
+                // Normal mode: show single run with events
+                const progressData = entry.data.map(point => ({ x: point.time, y: point.percent }))
+
+                // Prepare event datasets
+                const bossEvents = entry.events.filter(e => e.type === 'boss')
+                const deathEvents = entry.events.filter(e => e.type === 'death')
+                const customEvents = entry.events.filter(e => e.type === 'custom')
+
+                // Add boss events first (top layer)
+                if (bossEvents.length > 0) {
+                    chartDatasets.push({
+                        label: 'Événements Boss',
+                        data: bossEvents.map(event => {
+                            // Find the closest progress point to interpolate Y value
+                            const closestPoint = entry.data.reduce((prev, curr) =>
+                                Math.abs(curr.time - event.time) < Math.abs(prev.time - event.time) ? curr : prev
+                            )
+                            return {
+                                x: event.time,
+                                y: closestPoint ? closestPoint.percent : 0,
+                                event: event
+                            }
+                        }),
+                        borderColor: '#ef4444',
+                        backgroundColor: '#ef4444',
+                        borderWidth: 2,
+                        pointRadius: 8,
+                        pointHoverRadius: 10,
+                        pointStyle: 'triangle',
+                        showLine: false,
+                        fill: false
+                    })
+                }
+
+                // Add death events
+                if (deathEvents.length > 0) {
+                    chartDatasets.push({
+                        label: 'Deaths',
+                        data: deathEvents.map(event => ({
+                            x: event.time,
+                            y: event.percent,
+                            event: event
+                        })),
+                        borderColor: '#f59e0b',
+                        backgroundColor: '#f59e0b',
+                        borderWidth: 2,
+                        pointRadius: 7,
+                        pointHoverRadius: 9,
+                        pointStyle: 'crossRot',
+                        showLine: false,
+                        fill: false
+                    })
+                }
+
+                // Add custom events
+                if (customEvents.length > 0) {
+                    chartDatasets.push({
+                        label: 'Événements personnalisés',
+                        data: customEvents.map(event => {
+                            const closestPoint = entry.data.reduce((prev, curr) =>
+                                Math.abs(curr.time - event.time) < Math.abs(prev.time - event.time) ? curr : prev
+                            )
+                            return {
+                                x: event.time,
+                                y: closestPoint ? closestPoint.percent : 0,
+                                event: event
+                            }
+                        }),
+                        borderColor: '#8b5cf6',
+                        backgroundColor: '#8b5cf6',
+                        borderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointStyle: 'star',
+                        showLine: false,
+                        fill: false
+                    })
+                }
+
+                // Add progress curve last (background layer)
+                chartDatasets.push({
+                    label: 'Pourcentage cumulé',
+                    data: progressData,
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(134, 239, 172, 0.15)',
+                    borderWidth: 3,
+                    tension: 0.2,
+                    pointRadius: 1,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: '#fff',
+                    fill: true
+                })
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: chartDatasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: compareMode,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            backgroundColor: '#111827',
+                            titleColor: '#fff',
+                            bodyColor: '#67e8a5',
+                            displayColors: false,
+                            callbacks: {
+                                title: (tooltipItems) => {
+                                    const item = tooltipItems[0]
+                                    if (item.raw && item.raw.event) {
+                                        const event = item.raw.event
+                                        if (event.type === 'boss') {
+                                            return `Boss ${event.event}: ${event.name}`
+                                        } else if (event.type === 'death') {
+                                            return `Death: ${event.player}`
+                                        } else if (event.type === 'custom') {
+                                            return `Événement: ${event.name}`
+                                        }
+                                    }
+                                    return formatTime(item.parsed.x)
+                                },
+                                label: (context) => {
+                                    const item = context.raw
+
+                                    // Pour le dataset principal (progression) en mode normal
+                                    if (context.dataset.label === 'Pourcentage cumulé') {
+                                        return `${item.y.toFixed(2)}% de trashs`
+                                    }
+
+                                    // Pour les datasets de comparaison (Niveau +X)
+                                    if (context.dataset.label && context.dataset.label.startsWith('Niveau +')) {
+                                        return `${item.y.toFixed(2)}% de trashs`
+                                    }
+
+                                    // Pour les événements
+                                    if (item && item.event) {
+                                        const event = item.event
+                                        if (event.type === 'boss') {
+                                            return `${formatTime(event.time)} - ${event.event}`
+                                        } else if (event.type === 'death') {
+                                            return `${formatTime(event.time)} - ${event.percent.toFixed(1)}% des trashs`
+                                        } else if (event.type === 'custom') {
+                                            const date = new Date(event.timestamp * 1000)
+                                            const timeString = date.toLocaleTimeString('fr-FR', {
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                second: '2-digit'
+                                            })
+                                            return `${formatTime(event.time)} (${timeString})`
+                                        }
+                                    }
+
+                                    return `${typeof item} - ${JSON.stringify(item)}`
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            grid: {
+                                color: 'rgba(255,255,255,0.08)',
+                                lineWidth: 1
+                            },
+                            ticks: {
+                                color: '#a3a3a3',
+                                callback: (value) => formatTime(value),
+                                maxRotation: 45,
+                                minRotation: 45,
+                                font: { size: 11 }
+                            }
+                        },
+                        y: {
+                            min: 0,
+                            max: yAxisMax,
+                            grid: {
+                                color: 'rgba(255,255,255,0.08)'
+                            },
+                            ticks: {
+                                color: '#a3a3a3',
+                                font: { size: 12 },
+                                callback: (value) => value + '%'
+                            }
+                        }
+                    },
+                    elements: {
+                        line: {
+                            borderJoinStyle: 'round'
+                        }
+                    }
+                }
+            })
+        }
+        
+        // Main parse + add function
+        function parseAndAddData() {
+            const textarea = document.getElementById('pasteArea')
+            const text = textarea.value.trim()
+            
+            if (!text) {
+                alert("🤔 Le champ est vide… Collez vos données de keystone d’abord !")
+                return
+            }
+            
+            const newEntries = parseKeystoneData(text)
+            
+            if (newEntries.length === 0) {
+                alert("⚠️ Aucune donnée valide détectée. Vérifiez le format (MapID + Level + lignes « Xs: Y% »).")
+                return
+            }
+            
+            // Append to global list
+            datasets = [...datasets, ...newEntries]
+            filteredDatasets = [...datasets]
+
+            // Update dungeon filter
+            updateDungeonFilter()
+
+            // Clear textarea
+            textarea.value = ''
+
+            // Render everything
+            renderTabs()
+
+            // Auto-select the latest entry
+            currentEntry = newEntries[newEntries.length - 1]
+            renderTabs()
+            renderChart()
+        }
+        
+        // Load sample data (the one provided by user)
+        function loadSampleData() {
+            const sample = `MapID: 558 (Terrasse des Magistères)
+  Level 2:
+    [AFFIXES] Keystone: 165
+             Weekly: 165, 162, 10, 9, 147
+    10.0s: 0.0%
+    20.0s: 1.2%
+    30.0s: 4.1%
+    40.0s: 6.8%
+    50.0s: 6.8%
+    61.0s: 8.0%
+    71.0s: 12.3%
+    81.0s: 13.5%
+    91.0s: 13.5%
+    101.0s: 13.5%
+    111.0s: 13.5%
+    121.0s: 15.6%
+    132.0s: 15.6%
+    142.0s: 15.6%
+    152.0s: 16.8%
+    162.0s: 20.2%
+    [STARTING] Boss Assemblage arcanique de dispersion des foules at 170.0s
+    172.0s: 21.0%
+    182.0s: 22.7%
+    192.0s: 23.1%
+    202.0s: 23.1%
+    212.0s: 23.1%
+    222.0s: 23.1%
+    233.0s: 25.8%
+    243.0s: 25.8%
+    253.0s: 26.7%
+    263.0s: 27.5%
+    273.0s: 29.6%
+    283.0s: 29.6%
+    293.0s: 29.6%
+    [DEFEATED] Boss Assemblage arcanique de dispersion des foules at 303.0s
+    304.0s: 29.6%
+    314.0s: 29.6%
+    324.0s: 30.6%
+    334.0s: 30.6%
+    344.0s: 33.8%
+    355.0s: 34.7%
+    365.0s: 34.7%
+    375.0s: 34.7%
+    385.0s: 38.5%
+    395.0s: 39.3%
+    405.0s: 42.6%
+    415.0s: 42.6%
+    426.0s: 47.2%
+    436.0s: 47.2%
+    446.0s: 47.2%
+    456.0s: 48.0%
+    466.0s: 48.0%
+    476.0s: 52.1%
+    [STARTING] Boss Séranel Cinglesoleil at 485.0s
+    486.0s: 52.1%
+    496.0s: 52.1%
+    506.0s: 52.1%
+    517.0s: 52.1%
+    527.0s: 52.1%
+    537.0s: 52.1%
+    547.0s: 52.1%
+    557.0s: 52.1%
+    567.0s: 52.1%
+    [DEFEATED] Boss Séranel Cinglesoleil at 576.0s
+    577.0s: 52.1%
+    587.0s: 52.1%
+    597.0s: 52.1%
+    607.0s: 52.1%
+    618.0s: 52.6%
+    628.0s: 54.9%
+    638.0s: 58.6%
+    648.0s: 58.6%
+    658.0s: 58.6%
+    668.0s: 59.7%
+    679.0s: 59.7%
+    689.0s: 62.9%
+    699.0s: 64.6%
+    709.0s: 64.6%
+    719.0s: 68.5%
+    729.0s: 68.7%
+    740.0s: 69.9%
+    750.0s: 71.3%
+    760.0s: 72.5%
+    770.0s: 74.5%
+    780.0s: 74.5%
+    790.0s: 76.9%
+    801.0s: 76.9%
+    811.0s: 79.8%
+    821.0s: 81.9%
+    831.0s: 81.9%
+    [STARTING] Boss Gémellus at 836.0s
+    841.0s: 81.9%
+    852.0s: 81.9%
+    862.0s: 81.9%
+    872.0s: 81.9%
+    882.0s: 81.9%
+    892.0s: 81.9%
+    903.0s: 81.9%
+    913.0s: 81.9%
+    923.0s: 81.9%
+    933.0s: 81.9%
+    [DEFEATED] Boss Gémellus at 936.0s
+    943.0s: 81.9%
+    953.0s: 81.9%
+    963.0s: 81.9%
+    973.0s: 84.3%
+    984.0s: 89.7%
+    994.0s: 89.7%
+    1004.0s: 89.7%
+    1014.0s: 89.7%
+    1024.0s: 93.8%
+    1034.0s: 95.6%
+    1044.0s: 96.4%
+    1054.0s: 96.4%
+    1064.0s: 98.5%
+    1075.0s: 100.0%
+    1085.0s: 100.0%
+    [STARTING] Boss Dégentrius at 1086.0s
+    1095.0s: 100.0%
+    1105.0s: 100.0%
+    1115.0s: 100.0%
+    1125.0s: 100.0%
+    1136.0s: 100.0%
+    1146.0s: 100.0%
+    1156.0s: 100.0%
+    1166.0s: 100.0%
+    [DEFEATED] Boss Dégentrius at 1174.0s
+
+MapID: 557 (Flèche de Coursevent)
+  Level 7:
+    [AFFIXES] Keystone: 162, 10
+             Weekly: 165, 162, 10, 9, 147
+    10.0s: 0.0%
+    20.0s: 0.0%
+    31.0s: 0.0%
+    41.0s: 0.7%
+    51.0s: 1.9%
+    61.0s: 3.2%
+    71.0s: 9.0%
+    81.0s: 11.5%
+    91.0s: 11.5%
+    101.0s: 11.5%
+    112.0s: 11.5%
+    122.0s: 13.9%
+    132.0s: 13.9%
+    142.0s: 19.0%
+    152.0s: 19.8%
+    162.0s: 21.7%
+    172.0s: 21.7%
+    183.0s: 22.7%
+    193.0s: 23.2%
+    203.0s: 26.2%
+    213.0s: 27.4%
+    223.0s: 29.1%
+    233.0s: 29.1%
+    243.0s: 31.6%
+    254.0s: 31.6%
+    264.0s: 34.5%
+    274.0s: 34.5%
+    284.0s: 34.7%
+    295.0s: 36.7%
+    305.0s: 38.9%
+    315.0s: 39.8%
+    325.0s: 42.6%
+    335.0s: 42.6%
+    346.0s: 43.8%
+    356.0s: 45.0%
+    [STARTING] Boss Aube-de-Braise at 359.0s
+    366.0s: 45.0%
+    376.0s: 45.0%
+    386.0s: 45.0%
+    396.0s: 45.0%
+    407.0s: 45.0%
+    417.0s: 45.0%
+    427.0s: 45.0%
+    437.0s: 45.0%
+    447.0s: 45.0%
+    457.0s: 45.0%
+    [DEFEATED] Boss Aube-de-Braise at 464.0s
+    468.0s: 45.0%
+    478.0s: 45.0%
+    488.0s: 45.0%
+    498.0s: 45.0%
+    508.0s: 45.0%
+    518.0s: 45.0%
+    529.0s: 48.9%
+    539.0s: 49.6%
+    549.0s: 51.6%
+    559.0s: 51.6%
+    569.0s: 54.1%
+    580.0s: 54.8%
+    590.0s: 54.8%
+    600.0s: 57.4%
+    610.0s: 58.4%
+    620.0s: 58.4%
+    631.0s: 58.4%
+    641.0s: 58.4%
+    651.0s: 61.3%
+    661.0s: 61.3%
+    671.0s: 61.3%
+    681.0s: 61.3%
+    692.0s: 65.5%
+    702.0s: 70.4%
+    712.0s: 70.4%
+    [STARTING] Boss Duo abandonné at 716.0s
+    722.0s: 70.4%
+    732.0s: 70.4%
+    742.0s: 70.4%
+    753.0s: 70.4%
+    763.0s: 70.4%
+    773.0s: 70.4%
+    783.0s: 70.4%
+    793.0s: 70.4%
+    804.0s: 70.4%
+    814.0s: 70.4%
+    824.0s: 70.4%
+    834.0s: 70.4%
+    [DEFEATED] Boss Duo abandonné at 837.0s
+    844.0s: 70.4%
+    854.0s: 70.4%
+    865.0s: 70.4%
+    875.0s: 71.6%
+    885.0s: 71.6%
+    895.0s: 74.1%
+    906.0s: 74.1%
+    916.0s: 76.5%
+    926.0s: 78.2%
+    936.0s: 80.7%
+    946.0s: 83.2%
+    956.0s: 83.2%
+    966.0s: 83.2%
+    977.0s: 85.6%
+    987.0s: 86.6%
+    997.0s: 87.3%
+    1007.0s: 91.5%
+    1017.0s: 92.9%
+    1027.0s: 94.1%
+    1038.0s: 95.3%
+    1048.0s: 95.3%
+    1058.0s: 96.1%
+    1068.0s: 96.1%
+    1078.0s: 99.3%
+    1088.0s: 100.0%
+    1099.0s: 100.0%
+    [STARTING] Boss Commandant Kroluk at 1099.0s
+    1109.0s: 100.0%
+    1119.0s: 100.0%
+    1129.0s: 100.0%
+    1139.0s: 100.0%
+    1149.0s: 100.0%
+    1160.0s: 100.0%
+    1170.0s: 100.0%
+    1180.0s: 100.0%
+    1190.0s: 100.0%
+    1200.0s: 100.0%
+    1210.0s: 100.0%
+    1221.0s: 100.0%
+    1231.0s: 100.0%
+    1241.0s: 100.0%
+    [DEFEATED] Boss Commandant Kroluk at 1243.0s
+    1251.0s: 100.0%
+    1261.0s: 100.0%
+    1271.0s: 100.0%
+    [STARTING] Boss Cœur fébrile at 1274.0s
+    1281.0s: 100.0%
+    1292.0s: 100.0%
+    1302.0s: 100.0%
+    1312.0s: 100.0%
+    1322.0s: 100.0%
+    1332.0s: 100.0%
+    1342.0s: 100.0%
+    1353.0s: 100.0%
+    1363.0s: 100.0%
+    1373.0s: 100.0%
+    1383.0s: 100.0%
+    [DEFEATED] Boss Cœur fébrile at 1392.0s
+
+MapID: 559 (Point-nexus Xenas)
+  Level 2:
+    [AFFIXES] Keystone: 165
+             Weekly: 165, 162, 10, 9, 147
+    11.0s: 0.0%
+    21.0s: 0.0%
+    31.0s: 0.0%
+    41.0s: 4.2%
+    51.0s: 5.5%
+    61.0s: 9.7%
+    71.0s: 13.1%
+    81.0s: 13.1%
+    91.0s: 13.1%
+    102.0s: 13.1%
+    112.0s: 13.1%
+    122.0s: 18.3%
+    132.0s: 20.3%
+    142.0s: 20.3%
+    153.0s: 20.3%
+    163.0s: 24.0%
+    173.0s: 24.8%
+    183.0s: 25.7%
+    193.0s: 26.5%
+    203.0s: 27.3%
+    214.0s: 27.3%
+    224.0s: 30.7%
+    234.0s: 33.2%
+    244.0s: 33.2%
+    254.0s: 34.4%
+    265.0s: 35.2%
+    275.0s: 37.2%
+    285.0s: 37.2%
+    295.0s: 37.2%
+    305.0s: 37.2%
+    315.0s: 39.3%
+    326.0s: 41.8%
+    336.0s: 44.3%
+    [STARTING] Boss Chef forge-cœur Kasreth at 339.0s
+    346.0s: 44.3%
+    356.0s: 44.3%
+    366.0s: 44.3%
+    376.0s: 44.3%
+    386.0s: 44.3%
+    396.0s: 44.3%
+    407.0s: 44.3%
+    417.0s: 44.3%
+    [DEFEATED] Boss Chef forge-cœur Kasreth at 420.0s
+    427.0s: 44.3%
+    437.0s: 44.3%
+    447.0s: 44.3%
+    457.0s: 44.3%
+    467.0s: 46.5%
+    488.0s: 49.2%
+    498.0s: 51.7%
+    508.0s: 51.8%
+    518.0s: 51.8%
+    528.0s: 55.7%
+    [DEATH] Erandïl at 528.0s (55.7%)
+    539.0s: 55.7%
+    549.0s: 56.2%
+    559.0s: 56.2%
+    569.0s: 59.7%
+    579.0s: 59.9%
+    589.0s: 61.2%
+    600.0s: 62.8%
+    610.0s: 65.3%
+    620.0s: 65.3%
+    630.0s: 65.3%
+    640.0s: 65.8%
+    651.0s: 66.6%
+    661.0s: 69.0%
+    671.0s: 72.8%
+    681.0s: 72.8%
+    691.0s: 73.2%
+    701.0s: 73.2%
+    712.0s: 76.7%
+    722.0s: 76.7%
+    732.0s: 76.7%
+    742.0s: 77.3%
+    752.0s: 78.4%
+    762.0s: 80.9%
+    [STARTING] Boss Garde-cœur Nysarra at 769.0s
+    773.0s: 80.9%
+    783.0s: 80.9%
+    793.0s: 80.9%
+    803.0s: 80.9%
+    813.0s: 80.9%
+    823.0s: 80.9%
+    833.0s: 80.9%
+    843.0s: 80.9%
+    854.0s: 80.9%
+    864.0s: 80.9%
+    874.0s: 80.9%
+    [DEFEATED] Boss Garde-cœur Nysarra at 880.0s
+    884.0s: 80.9%
+    894.0s: 80.9%
+    904.0s: 80.9%
+    914.0s: 80.9%
+    924.0s: 80.9%
+    935.0s: 80.9%
+    945.0s: 80.9%
+    955.0s: 81.4%
+    965.0s: 84.6%
+    975.0s: 84.9%
+    986.0s: 84.9%
+    996.0s: 85.7%
+    1006.0s: 89.8%
+    1016.0s: 92.3%
+    1026.0s: 92.3%
+    1037.0s: 92.8%
+    1047.0s: 94.3%
+    1057.0s: 97.1%
+    1067.0s: 98.8%
+    1077.0s: 100.0%
+    [STARTING] Boss Lothraxion at 1078.0s
+    1087.0s: 100.0%
+    1098.0s: 100.0%
+    1108.0s: 100.0%
+    1118.0s: 100.0%
+    1128.0s: 100.0%
+    1138.0s: 100.0%
+    1148.0s: 100.0%
+    1158.0s: 100.0%
+    1169.0s: 100.0%
+    1179.0s: 100.0%
+    1189.0s: 100.0%
+    1199.0s: 100.0%
+    1209.0s: 100.0%
+    1219.0s: 100.0%
+    [DEFEATED] Boss Lothraxion at 1220.0s
+  Level 5:
+    [AFFIXES] Keystone: 165, 162
+             Weekly: 165, 162, 10, 9, 147
+    10.0s: 0.0%
+    20.0s: 0.0%
+    31.0s: 0.0%
+    41.0s: 1.7%
+    51.0s: 5.7%
+    61.0s: 8.9%
+    71.0s: 8.9%
+    81.0s: 8.9%
+    92.0s: 8.9%
+    [DEATH] Brogon at 102.0s (8.9%)
+    102.0s: 8.9%
+    112.0s: 11.4%
+    [DEATH] Корольснорк at 121.0s (11.4%)
+    [DEATH] Brogon at 122.0s (11.4%)
+    122.0s: 11.4%
+    [DEATH] Bloodmane at 125.0s (12.2%)
+    [DEATH] Poulpitoo at 132.0s (13.9%)
+    133.0s: 14.8%
+    [DEATH] Skynøz at 133.0s (14.8%)
+    143.0s: 14.8%
+    153.0s: 14.8%
+    163.0s: 14.8%
+    173.0s: 14.8%
+    183.0s: 14.8%
+    193.0s: 15.6%
+    203.0s: 18.1%
+    214.0s: 19.8%
+    224.0s: 21.5%
+    234.0s: 22.7%
+    244.0s: 23.8%
+    254.0s: 23.8%
+    264.0s: 28.2%
+    275.0s: 29.0%
+    285.0s: 29.0%
+    295.0s: 33.2%
+    [STARTING] Boss Chef forge-cœur Kasreth at 299.0s
+    305.0s: 33.2%
+    315.0s: 33.2%
+    325.0s: 33.2%
+    336.0s: 33.2%
+    346.0s: 33.2%
+    356.0s: 33.2%
+    366.0s: 33.2%
+    [DEFEATED] Boss Chef forge-cœur Kasreth at 375.0s
+    376.0s: 33.2%
+    386.0s: 33.2%
+    396.0s: 33.2%
+    406.0s: 33.2%
+    417.0s: 33.2%
+    427.0s: 33.2%
+    437.0s: 34.4%
+    447.0s: 38.9%
+    457.0s: 41.1%
+    467.0s: 41.1%
+    477.0s: 43.6%
+    488.0s: 44.5%
+    498.0s: 44.5%
+    508.0s: 45.8%
+    518.0s: 49.5%
+    528.0s: 52.5%
+    539.0s: 53.0%
+    549.0s: 54.5%
+    559.0s: 54.5%
+    569.0s: 56.4%
+    579.0s: 58.1%
+    589.0s: 58.1%
+    599.0s: 58.6%
+    610.0s: 62.4%
+    620.0s: 62.4%
+    630.0s: 62.4%
+    640.0s: 64.4%
+    650.0s: 65.8%
+    660.0s: 66.8%
+    671.0s: 67.4%
+    681.0s: 70.0%
+    691.0s: 72.5%
+    701.0s: 72.5%
+    711.0s: 75.3%
+    721.0s: 75.3%
+    732.0s: 76.3%
+    742.0s: 76.3%
+    752.0s: 76.8%
+    762.0s: 77.5%
+    772.0s: 78.0%
+    782.0s: 80.5%
+    [STARTING] Boss Garde-cœur Nysarra at 786.0s
+    792.0s: 80.5%
+    803.0s: 80.5%
+    813.0s: 80.5%
+    823.0s: 80.5%
+    833.0s: 80.5%
+    843.0s: 80.5%
+    853.0s: 80.5%
+    863.0s: 80.5%
+    874.0s: 80.5%
+    884.0s: 80.5%
+    894.0s: 80.5%
+    [DEFEATED] Boss Garde-cœur Nysarra at 899.0s
+    904.0s: 80.5%
+    914.0s: 80.5%
+    924.0s: 80.5%
+    934.0s: 80.5%
+    944.0s: 80.5%
+    955.0s: 80.5%
+    965.0s: 82.6%
+    975.0s: 83.1%
+    985.0s: 85.6%
+    995.0s: 88.1%
+    1006.0s: 88.1%
+    1016.0s: 90.6%
+    1026.0s: 91.8%
+    1036.0s: 91.8%
+    1047.0s: 97.0%
+    [STARTING] Boss Lothraxion at 1058.0s
+    1067.0s: 99.5%
+    1077.0s: 99.5%
+    1087.0s: 100.0%
+    1097.0s: 100.0%
+    1108.0s: 100.0%
+    1118.0s: 100.0%
+    1128.0s: 100.0%
+    1138.0s: 100.0%
+    1148.0s: 100.0%
+    1158.0s: 100.0%
+    1168.0s: 100.0%
+    1178.0s: 100.0%
+    [DEFEATED] Boss Lothraxion at 1179.0s
+
+MapID: 556 (Fosse de Saron)
+  Level 2:
+    [AFFIXES] Keystone: 165
+             Weekly: 165, 162, 10, 9, 147
+    11.0s: 0.0%
+    21.0s: 0.0%
+    31.0s: 1.1%
+    41.0s: 4.8%
+    51.0s: 7.3%
+    61.0s: 7.3%
+    72.0s: 7.3%
+    82.0s: 7.3%
+    92.0s: 14.8%
+    102.0s: 14.8%
+    112.0s: 15.1%
+    122.0s: 18.2%
+    132.0s: 18.2%
+    142.0s: 18.2%
+    153.0s: 18.2%
+    163.0s: 21.8%
+    173.0s: 25.7%
+    183.0s: 25.7%
+    193.0s: 25.7%
+    203.0s: 28.0%
+    214.0s: 30.5%
+    224.0s: 33.7%
+    234.0s: 35.5%
+    244.0s: 35.5%
+    254.0s: 35.5%
+    [DEATH] Frequenze at 258.0s (35.5%)
+    264.0s: 35.8%
+    275.0s: 41.4%
+    285.0s: 43.9%
+    295.0s: 43.9%
+    305.0s: 43.9%
+    315.0s: 44.8%
+    325.0s: 46.7%
+    335.0s: 47.0%
+    345.0s: 49.3%
+    355.0s: 50.9%
+    366.0s: 50.9%
+    376.0s: 52.7%
+    386.0s: 54.1%
+    396.0s: 54.1%
+    406.0s: 58.2%
+    416.0s: 58.2%
+    426.0s: 62.4%
+    436.0s: 62.4%
+    447.0s: 62.4%
+    457.0s: 62.7%
+    467.0s: 68.0%
+    477.0s: 71.5%
+    487.0s: 71.5%
+    497.0s: 71.5%
+    [STARTING] Boss Maître-forge Gargivre at 500.0s
+    507.0s: 71.5%
+    517.0s: 71.5%
+    527.0s: 71.5%
+    537.0s: 71.5%
+    547.0s: 71.5%
+    557.0s: 71.5%
+    567.0s: 71.5%
+    577.0s: 71.5%
+    [DEFEATED] Boss Maître-forge Gargivre at 578.0s
+    587.0s: 71.5%
+    598.0s: 71.5%
+    608.0s: 71.5%
+    618.0s: 71.5%
+    628.0s: 74.5%
+    638.0s: 77.1%
+    [STARTING] Boss Ick et Krick at 640.0s
+    648.0s: 77.1%
+    658.0s: 77.1%
+    668.0s: 77.1%
+    678.0s: 77.1%
+    688.0s: 77.1%
+    699.0s: 77.1%
+    709.0s: 77.1%
+    [DEATH] Frequenze at 714.0s (77.1%)
+    [DEATH] Бладрога at 717.0s (77.1%)
+    719.0s: 77.1%
+    [DEATH] Carpus at 729.0s (77.1%)
+    729.0s: 77.1%
+    [DEATH] Poulpitoo at 736.0s (77.1%)
+    739.0s: 77.1%
+    749.0s: 77.1%
+    [WIPED] Boss Ick et Krick at 750.0s
+    [DEATH] Gobgib at 750.0s (77.1%)
+    759.0s: 77.1%
+    769.0s: 77.1%
+    779.0s: 77.1%
+    789.0s: 77.1%
+    [STARTING] Boss Ick et Krick at 793.0s
+    799.0s: 77.1%
+    809.0s: 77.1%
+    819.0s: 77.1%
+    829.0s: 77.1%
+    839.0s: 77.1%
+    849.0s: 77.1%
+    860.0s: 77.1%
+    870.0s: 77.1%
+    880.0s: 77.1%
+    [DEFEATED] Boss Ick et Krick at 886.0s
+    890.0s: 77.1%
+    900.0s: 77.1%
+    910.0s: 77.1%
+    920.0s: 79.0%
+    930.0s: 80.7%
+    940.0s: 82.4%
+    950.0s: 82.4%
+    960.0s: 84.4%
+    971.0s: 86.8%
+    981.0s: 86.8%
+    991.0s: 87.7%
+    1001.0s: 88.3%
+    1011.0s: 92.4%
+    1021.0s: 92.4%
+    1031.0s: 92.7%
+    1041.0s: 95.6%
+    1051.0s: 95.6%
+    1061.0s: 95.6%
+    1072.0s: 95.6%
+    1082.0s: 98.8%
+    1092.0s: 98.8%
+    1102.0s: 98.8%
+    [STARTING] Boss Seigneur du Fléau Tyrannus at 1108.0s
+    1112.0s: 98.8%
+    1122.0s: 98.8%
+    1132.0s: 98.8%
+    1142.0s: 98.8%
+    1152.0s: 98.8%
+    1162.0s: 98.8%
+    1172.0s: 98.8%
+    1182.0s: 98.8%
+    1193.0s: 98.8%
+    1203.0s: 98.8%
+    1213.0s: 98.8%
+    [DEFEATED] Boss Seigneur du Fléau Tyrannus at 1213.0s
+    1223.0s: 98.8%
+    1233.0s: 98.8%
+    1243.0s: 98.8%
+  Level 4:
+    [AFFIXES] Keystone: 165
+             Weekly: 165, 162, 10, 9, 147
+    10.0s: 0.0%
+    20.0s: 0.0%
+    30.0s: 7.2%
+    40.0s: 9.6%
+    50.0s: 9.6%
+    61.0s: 9.6%
+    71.0s: 9.6%
+    81.0s: 13.8%
+    91.0s: 18.2%
+    101.0s: 18.2%
+    111.0s: 18.2%
+    122.0s: 19.1%
+    132.0s: 26.3%
+    142.0s: 27.4%
+    152.0s: 27.4%
+    162.0s: 28.8%
+    172.0s: 31.4%
+    182.0s: 32.0%
+    193.0s: 35.3%
+    [STARTING] Boss Ick et Krick at 196.0s
+    203.0s: 35.3%
+    213.0s: 35.3%
+    223.0s: 35.3%
+    233.0s: 35.3%
+    243.0s: 35.3%
+    253.0s: 35.3%
+    263.0s: 35.3%
+    273.0s: 35.3%
+    284.0s: 35.3%
+    294.0s: 35.3%
+    [DEFEATED] Boss Ick et Krick at 296.0s
+    304.0s: 35.3%
+    314.0s: 35.3%
+    324.0s: 35.3%
+    334.0s: 36.7%
+    344.0s: 40.4%
+    354.0s: 42.6%
+    365.0s: 44.3%
+    375.0s: 44.3%
+    385.0s: 44.6%
+    395.0s: 47.3%
+    405.0s: 50.4%
+    415.0s: 50.4%
+    425.0s: 55.2%
+    435.0s: 57.7%
+    [STARTING] Boss Maître-forge Gargivre at 440.0s
+    445.0s: 57.7%
+    456.0s: 57.7%
+    466.0s: 57.7%
+    476.0s: 57.7%
+    486.0s: 57.7%
+    496.0s: 57.7%
+    506.0s: 57.7%
+    516.0s: 57.7%
+    526.0s: 57.7%
+    [DEFEATED] Boss Maître-forge Gargivre at 531.0s
+    536.0s: 57.7%
+    546.0s: 57.7%
+    556.0s: 57.7%
+    566.0s: 57.7%
+    577.0s: 60.3%
+    587.0s: 61.1%
+    597.0s: 61.9%
+    607.0s: 62.5%
+    617.0s: 64.1%
+    627.0s: 70.3%
+    637.0s: 70.3%
+    647.0s: 70.3%
+    657.0s: 70.3%
+    667.0s: 70.3%
+    677.0s: 70.3%
+    688.0s: 70.6%
+    698.0s: 72.3%
+    708.0s: 76.5%
+    718.0s: 79.9%
+    728.0s: 79.9%
+    738.0s: 80.2%
+    748.0s: 81.5%
+    758.0s: 83.8%
+    768.0s: 84.4%
+    779.0s: 86.5%
+    789.0s: 87.7%
+    799.0s: 88.8%
+    809.0s: 91.9%
+    819.0s: 91.9%
+    829.0s: 91.9%
+    [STARTING] Boss Seigneur du Fléau Tyrannus at 833.0s
+    839.0s: 91.9%
+    849.0s: 91.9%
+    859.0s: 91.9%
+    869.0s: 91.9%
+    879.0s: 91.9%
+    889.0s: 91.9%
+    900.0s: 91.9%
+    910.0s: 91.9%
+    920.0s: 91.9%
+    930.0s: 91.9%
+    [DEFEATED] Boss Seigneur du Fléau Tyrannus at 930.0s
+    940.0s: 91.9%
+    950.0s: 91.9%
+    960.0s: 91.9%
+    970.0s: 91.9%
+    980.0s: 93.0%
+    990.0s: 99.2%
+
+MapID: 402 (Académie d’Algeth’ar)
+  Level 5:
+    [AFFIXES] Keystone: 165, 162
+             Weekly: 165, 162, 10, 9, 147
+    10.0s: 0.0%
+    20.0s: 0.0%
+    30.0s: 0.0%
+    40.0s: 0.0%
+    51.0s: 0.0%
+    61.0s: 11.1%
+    71.0s: 12.4%
+    81.0s: 17.6%
+    91.0s: 17.6%
+    101.0s: 21.5%
+    111.0s: 21.5%
+    [STARTING] Boss Ancien embroussaillé at 117.0s
+    121.0s: 21.5%
+    131.0s: 21.5%
+    142.0s: 21.5%
+    152.0s: 21.5%
+    162.0s: 21.5%
+    172.0s: 21.5%
+    182.0s: 21.5%
+    192.0s: 21.5%
+    [DEFEATED] Boss Ancien embroussaillé at 202.0s
+    203.0s: 21.5%
+    213.0s: 21.5%
+    223.0s: 21.5%
+    233.0s: 21.5%
+    243.0s: 21.5%
+    253.0s: 21.5%
+    263.0s: 21.5%
+    273.0s: 25.4%
+    283.0s: 25.4%
+    293.0s: 28.5%
+    303.0s: 28.5%
+    313.0s: 30.7%
+    324.0s: 33.9%
+    334.0s: 33.9%
+    344.0s: 35.7%
+    354.0s: 38.9%
+    364.0s: 42.2%
+    374.0s: 42.2%
+    384.0s: 42.2%
+    [STARTING] Boss Tricérabec at 389.0s
+    394.0s: 42.2%
+    404.0s: 42.2%
+    414.0s: 42.2%
+    424.0s: 42.2%
+    435.0s: 42.2%
+    445.0s: 42.2%
+    455.0s: 42.2%
+    465.0s: 42.2%
+    475.0s: 42.2%
+    485.0s: 42.2%
+    495.0s: 42.2%
+    505.0s: 42.2%
+    [DEFEATED] Boss Tricérabec at 508.0s
+    516.0s: 42.2%
+    526.0s: 42.2%
+    536.0s: 42.2%
+    546.0s: 42.2%
+    556.0s: 49.3%
+    566.0s: 49.3%
+    576.0s: 49.3%
+    586.0s: 49.3%
+    597.0s: 54.8%
+    607.0s: 55.9%
+    617.0s: 55.9%
+    627.0s: 59.1%
+    637.0s: 59.1%
+    647.0s: 59.1%
+    657.0s: 64.3%
+    667.0s: 64.3%
+    678.0s: 64.3%
+    688.0s: 67.6%
+    698.0s: 68.5%
+    708.0s: 70.7%
+    718.0s: 71.7%
+    728.0s: 72.6%
+    738.0s: 74.8%
+    748.0s: 77.6%
+    759.0s: 80.9%
+    769.0s: 80.9%
+    [STARTING] Boss Vexamus at 778.0s
+    779.0s: 80.9%
+    789.0s: 80.9%
+    799.0s: 80.9%
+    809.0s: 80.9%
+    819.0s: 80.9%
+    829.0s: 80.9%
+    839.0s: 80.9%
+    [DEFEATED] Boss Vexamus at 841.0s
+    850.0s: 80.9%
+    860.0s: 80.9%
+    870.0s: 80.9%
+    880.0s: 83.0%
+    890.0s: 87.4%
+    900.0s: 87.4%
+    910.0s: 87.4%
+    920.0s: 87.4%
+    930.0s: 87.4%
+    940.0s: 87.4%
+    951.0s: 90.7%
+    961.0s: 95.0%
+    971.0s: 100.0%
+    [STARTING] Boss Écho de Doragosa at 973.0s
+    981.0s: 100.0%
+    991.0s: 100.0%
+    1001.0s: 100.0%
+    1011.0s: 100.0%
+    1021.0s: 100.0%
+    1031.0s: 100.0%
+    1041.0s: 100.0%
+    1052.0s: 100.0%
+    1062.0s: 100.0%
+    1072.0s: 100.0%
+    [DEATH] Poulpitoo at 1074.0s (100.0%)
+    1082.0s: 100.0%
+    [DEFEATED] Boss Écho de Doragosa at 1086.0s`
+            
+            const newEntries = parseKeystoneData(sample)
+            datasets = [...datasets, ...newEntries]
+            filteredDatasets = [...datasets]
+
+            // Update dungeon filter
+            updateDungeonFilter()
+
+            renderTabs()
+            currentEntry = newEntries[newEntries.length - 1]
+            renderTabs()
+            renderChart()
+
+            // Scroll to chart
+            document.getElementById('chartSection').scrollIntoView({ behavior: 'smooth' })
+        }
+
+        // Toggle compare mode
+        function toggleCompareMode() {
+            compareMode = document.getElementById('compareMode').checked
+            renderChart()
+        }
+
+        // Filter datasets by dungeon name
+        function filterByDungeon(dungeonName) {
+            if (dungeonName === 'all') {
+                filteredDatasets = [...datasets]
+            } else {
+                filteredDatasets = datasets.filter(entry => entry.dungeonName === dungeonName)
+            }
+
+            // Reset currentEntry if it's not in the filtered list
+            if (currentEntry && !filteredDatasets.find(entry => entry.id === currentEntry.id)) {
+                currentEntry = filteredDatasets.length > 0 ? filteredDatasets[0] : null
+            }
+
+            renderTabs()
+            if (currentEntry) {
+                renderChart()
+            } else {
+                // Hide chart if no entries
+                document.getElementById('chartSection').classList.add('hidden')
+            }
+        }
+
+        // Update dungeon filter dropdown with available dungeon names
+        function updateDungeonFilter() {
+            const select = document.getElementById('dungeonFilter')
+            const currentValue = select.value
+
+            // Clear existing options except "All"
+            select.innerHTML = '<option value="all">Tous les donjons</option>'
+
+            // Get unique dungeon names
+            const dungeonNames = [...new Set(datasets.map(entry => entry.dungeonName))].sort()
+
+            // Add dungeon options
+            dungeonNames.forEach(name => {
+                const option = document.createElement('option')
+                option.value = name
+                option.textContent = name
+                select.appendChild(option)
+            })
+
+            // Restore previous selection if it still exists
+            if (currentValue && (currentValue === 'all' || dungeonNames.includes(currentValue))) {
+                select.value = currentValue
+            } else {
+                select.value = 'all'
+            }
+
+            // Apply current filter
+            filterByDungeon(select.value)
+        }
+
+        // Export current dataset as CSV
+        function exportCurrentData() {
+            if (!currentEntry) return
+            const entry = currentEntry
+            
+            let csv = "Time (seconds),Time (MM:SS),Percentage\n"
+            entry.data.forEach(point => {
+                csv += `${point.time},${formatTime(point.time)},${point.percent}\n`
+            })
+            
+            const blob = new Blob([csv], { type: 'text/csv' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `keystone_${entry.mapID}_level${entry.level}.csv`
+            a.click()
+            URL.revokeObjectURL(url)
+        }
+        
+        // Clear everything
+        function clearAllData() {
+            if (confirm("Supprimer TOUTES les données ?")) {
+                datasets = []
+                filteredDatasets = []
+                currentEntry = null
+                if (chartInstance) chartInstance.destroy()
+                document.getElementById('tabsContainer').classList.add('hidden')
+                document.getElementById('chartSection').classList.add('hidden')
+                document.getElementById('noDataMessage').classList.remove('hidden')
+                document.getElementById('tabs').innerHTML = ''
+                updateDungeonFilter()
+            }
+        }
+        
+        // Boot the app
+        window.onload = function () {
+            initTailwind().theme()
+            console.log('%c✅ Keystone Vision chargé – prêt pour vos données Mythic+ !', 'color:#22c55e; font-family:monospace')
+        }
+    </script>
+</body>
+</html>
+
+
+
