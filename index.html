@@ -470,10 +470,10 @@
                         </div>
                         <div class="text-sm text-zinc-400 mt-px">${entry.affixes ? (typeof entry.affixes === 'object' && entry.affixes.keystone ? `${entry.affixes.keystone.length} affixes` : `${entry.affixes} affixes`) : ''}</div>
                         ${entry.affixes && typeof entry.affixes === 'object' && entry.affixes.keystone && entry.affixes.keystone[0] ? `<div class="flex gap-1 mt-1">${entry.affixes.keystone.slice(0, 3).map(a => `<img src="${getAffixIconUrl(a)}" alt="${affixNames[a.id] || a.name || a.id}" title="${affixNames[a.id] || a.name || a.id}" class="w-4 h-4 rounded">`).join('')}${entry.affixes.keystone.length > 3 ? `<span class="text-xs text-zinc-500 ml-1">+${entry.affixes.keystone.length - 3}</span>` : ''}</div>` : ''}
-                        ${entry.events.length > 0 ? `<div class="text-xs text-zinc-500 mt-1">${entry.events.length} event${entry.events.length > 1 ? 's' : ''} recorded</div>` : ''}
+                        ${entry.events.length > 0 ? `<div class="text-xs text-zinc-500 mt-1">${entry.events.length} événement${entry.events.length > 1 ? 's' : ''} enregistré${entry.events.length > 1 ? 's' : ''}</div>` : ''}
                     </div>
                     <div class="text-right">
-                        <div class="text-xs uppercase tracking-widest text-emerald-300">${entry.data[entry.data.length - 1].percent === 100 ? '100% at' : entry.data[entry.data.length - 1].percent + '% at'}</div>
+                        <div class="text-xs uppercase tracking-widest text-emerald-300">${entry.data[entry.data.length - 1].percent === 100 ? '100% à' : entry.data[entry.data.length - 1].percent + '% à'}</div>
                         <div class="font-mono text-2xl font-semibold">${formatTime(entry.data[entry.data.length - 1].time)}</div>
                     </div>
                 `
@@ -507,24 +507,29 @@
                 const dungeonName = entriesToShow[0].dungeonName
                 const mapID = entriesToShow[0].mapID
                 document.getElementById('selectedTitle').innerHTML = `
-                    Run comparison - ${dungeonName}
+                    Comparaison des runs - ${dungeonName}
                 `
                 document.getElementById('selectedSubtitle').innerHTML = `
                     ${entriesToShow.length} run${entriesToShow.length > 1 ? 's' : ''} • MapID <span class="font-mono">${mapID}</span>
                 `
-                document.getElementById('totalRuns').innerHTML = `${entriesToShow.length} curve${entriesToShow.length > 1 ? 's' : ''} compared`
+                document.getElementById('totalRuns').innerHTML = `${entriesToShow.length} curve${entriesToShow.length > 1 ? 's' : ''} comparée${entriesToShow.length > 1 ? 's' : ''}`
             } else {
                 document.getElementById('selectedTitle').innerHTML = `
                     ${entry.dungeonName} <span class="font-mono text-emerald-400 ml-3">+${entry.level}</span>
                 `
                 document.getElementById('selectedSubtitle').innerHTML = `
                     MapID <span class="font-mono">${entry.mapID}</span> •
-                    Last run completed in <span class="font-mono">${formatTime(entry.data[entry.data.length - 1].time)}</span>
+                    Dernier run terminé en <span class="font-mono">${formatTime(entry.data[entry.data.length - 1].time)}</span>
                     ${entry.affixes ? (typeof entry.affixes === 'object' && entry.affixes.keystone ? ` • ${entry.affixes.keystone.map(a => `<img src="${getAffixIconUrl(a)}" alt="${affixNames[a.id] || a.name || a.id}" title="${affixNames[a.id] || a.name || a.id}" class="inline w-4 h-4 rounded">`).join('')}` : ` • <span class="text-amber-400">${entry.affixes} affixes</span>`) : ''}
                 `
-                document.getElementById('totalRuns').innerHTML = `% Trash • ${entry.data.length} data points`
+                document.getElementById('totalRuns').innerHTML = `% Trash • ${entry.data.length} points de données`
             }
-
+            
+            // Destroy old chart
+            if (chartInstance) {
+                chartInstance.destroy()
+            }
+            
             // Calculate Y-axis max based on all entries
             let yAxisMax = 10
             entriesToShow.forEach(e => {
@@ -541,7 +546,7 @@
                     const progressData = runEntry.data.map(point => ({ x: point.time, y: point.percent }))
 
                     chartDatasets.push({
-                        label: `M+${runEntry.level}`,
+                        label: `Niveau +${runEntry.level}`,
                         data: progressData,
                         borderColor: color,
                         backgroundColor: color.replace(')', ', 0.15)').replace('rgb', 'rgba'),
@@ -565,7 +570,7 @@
                 // Add boss events first (top layer)
                 if (bossEvents.length > 0) {
                     chartDatasets.push({
-                        label: 'Boss Events',
+                        label: 'Événements Boss',
                         data: bossEvents.map(event => {
                             // Find the closest progress point to interpolate Y value
                             const closestPoint = entry.data.reduce((prev, curr) =>
@@ -611,7 +616,7 @@
                 // Add custom events
                 if (customEvents.length > 0) {
                     chartDatasets.push({
-                        label: 'Custom Events',
+                        label: 'Événements personnalisés',
                         data: customEvents.map(event => {
                             const closestPoint = entry.data.reduce((prev, curr) =>
                                 Math.abs(curr.time - event.time) < Math.abs(prev.time - event.time) ? curr : prev
@@ -635,7 +640,7 @@
 
                 // Add progress curve last (background layer)
                 chartDatasets.push({
-                    label: 'Cumulative percentage',
+                    label: 'Pourcentage cumulé',
                     data: progressData,
                     borderColor: '#22c55e',
                     backgroundColor: 'rgba(134, 239, 172, 0.15)',
@@ -676,7 +681,7 @@
                                         } else if (event.type === 'death') {
                                             return `Death: ${event.player}`
                                         } else if (event.type === 'custom') {
-                                            return `Event: ${event.name}`
+                                            return `Événement: ${event.name}`
                                         }
                                     }
                                     return formatTime(item.parsed.x)
@@ -684,14 +689,14 @@
                                 label: (context) => {
                                     const item = context.raw
 
-                                    // For the main dataset (progression) in normal mode
-                                    if (context.dataset.label === 'Cumulative percentage') {
-                                        return `${item.y.toFixed(2)}% trash`
+                                    // Pour le dataset principal (progression) en mode normal
+                                    if (context.dataset.label === 'Pourcentage cumulé') {
+                                        return `${item.y.toFixed(2)}% de trashs`
                                     }
 
-                                    // For comparison datasets (M+X)
-                                    if (context.dataset.label && context.dataset.label.startsWith('M+')) {
-                                        return `${item.y.toFixed(2)}% trash`
+                                    // Pour les datasets de comparaison (Niveau +X)
+                                    if (context.dataset.label && context.dataset.label.startsWith('Niveau +')) {
+                                        return `${item.y.toFixed(2)}% de trashs`
                                     }
 
                                     // Pour les événements
@@ -792,7 +797,7 @@
         
         // Load sample data (the one provided by user)
         function loadSampleData() {
-            const sample = `MapID: 558 (Magister's Terrace)
+            const sample = `MapID: 558 (Terrasse des Magistères)
   Level 2:
     [AFFIXES] Keystone: 165
              Weekly: 165, 162, 10, 9, 147
@@ -812,7 +817,7 @@
     142.0s: 15.6%
     152.0s: 16.8%
     162.0s: 20.2%
-    [STARTING] Boss Arcane Assembly at 170.0s
+    [STARTING] Boss Assemblage arcanique de dispersion des foules at 170.0s
     172.0s: 21.0%
     182.0s: 22.7%
     192.0s: 23.1%
@@ -845,7 +850,7 @@
     456.0s: 48.0%
     466.0s: 48.0%
     476.0s: 52.1%
-    [STARTING] Boss Sunflare Seranel at 485.0s
+    [STARTING] Boss Séranel Cinglesoleil at 485.0s
     486.0s: 52.1%
     496.0s: 52.1%
     506.0s: 52.1%
@@ -855,7 +860,7 @@
     547.0s: 52.1%
     557.0s: 52.1%
     567.0s: 52.1%
-    [DEFEATED] Boss Sunflare Seranel at 576.0s
+    [DEFEATED] Boss Séranel Cinglesoleil at 576.0s
     577.0s: 52.1%
     587.0s: 52.1%
     597.0s: 52.1%
@@ -882,7 +887,7 @@
     811.0s: 79.8%
     821.0s: 81.9%
     831.0s: 81.9%
-    [STARTING] Boss Gemellus at 836.0s
+    [STARTING] Boss Gémellus at 836.0s
     841.0s: 81.9%
     852.0s: 81.9%
     862.0s: 81.9%
@@ -893,7 +898,7 @@
     913.0s: 81.9%
     923.0s: 81.9%
     933.0s: 81.9%
-    [DEFEATED] Boss Gemellus at 936.0s
+    [DEFEATED] Boss Gémellus at 936.0s
     943.0s: 81.9%
     953.0s: 81.9%
     963.0s: 81.9%
@@ -909,7 +914,7 @@
     1064.0s: 98.5%
     1075.0s: 100.0%
     1085.0s: 100.0%
-    [STARTING] Boss Degentrius at 1086.0s
+    [STARTING] Boss Dégentrius at 1086.0s
     1095.0s: 100.0%
     1105.0s: 100.0%
     1115.0s: 100.0%
@@ -918,9 +923,9 @@
     1146.0s: 100.0%
     1156.0s: 100.0%
     1166.0s: 100.0%
-    [DEFEATED] Boss Degentrius at 1174.0s
+    [DEFEATED] Boss Dégentrius at 1174.0s
 
-MapID: 557 (Skyreach)
+MapID: 557 (Flèche de Coursevent)
   Level 7:
     [AFFIXES] Keystone: 162, 10
              Weekly: 165, 162, 10, 9, 147
@@ -959,7 +964,7 @@ MapID: 557 (Skyreach)
     335.0s: 42.6%
     346.0s: 43.8%
     356.0s: 45.0%
-    [STARTING] Boss Emberdawn at 359.0s
+    [STARTING] Boss Aube-de-Braise at 359.0s
     366.0s: 45.0%
     376.0s: 45.0%
     386.0s: 45.0%
@@ -970,7 +975,7 @@ MapID: 557 (Skyreach)
     437.0s: 45.0%
     447.0s: 45.0%
     457.0s: 45.0%
-    [DEFEATED] Boss Emberdawn at 464.0s
+    [DEFEATED] Boss Aube-de-Braise at 464.0s
     468.0s: 45.0%
     478.0s: 45.0%
     488.0s: 45.0%
@@ -996,7 +1001,7 @@ MapID: 557 (Skyreach)
     692.0s: 65.5%
     702.0s: 70.4%
     712.0s: 70.4%
-    [STARTING] Boss Abandoned Duo at 716.0s
+    [STARTING] Boss Duo abandonné at 716.0s
     722.0s: 70.4%
     732.0s: 70.4%
     742.0s: 70.4%
@@ -1009,7 +1014,7 @@ MapID: 557 (Skyreach)
     814.0s: 70.4%
     824.0s: 70.4%
     834.0s: 70.4%
-    [DEFEATED] Boss Abandoned Duo at 837.0s
+    [DEFEATED] Boss Duo abandonné at 837.0s
     844.0s: 70.4%
     854.0s: 70.4%
     865.0s: 70.4%
